@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { createRain, createLeaves, createSnow, createSummer } from './scenes'
 
 const MODES = [['rain', 'Rain'], ['autumn', 'Autumn'], ['winter', 'Winter'], ['summer', 'Summer'], ['off', 'Off']]
@@ -13,7 +13,9 @@ const read = (key, valid, fallback) => {
   return fallback
 }
 
-export default function Weather() {
+const WeatherContext = createContext(null)
+
+export function WeatherProvider({ children }) {
   // season = colour palette (autumn by default); mode = the animation on screen
   const [season, setSeason] = useState(() => (typeof window === 'undefined' ? 'autumn' : read('season', SEASONS, 'autumn')))
   const [mode, setMode] = useState(() => {
@@ -37,11 +39,12 @@ export default function Weather() {
     const c = canvas.current
     const ctx = c.getContext('2d')
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    let raf, last = 0
+    let raf, last = 0, lastW = 0, lastH = 0
 
     const start = () => {
       cancelAnimationFrame(raf)
       const w = window.innerWidth, h = window.innerHeight
+      lastW = w; lastH = h
       c.width = w * dpr; c.height = h * dpr
       c.style.width = w + 'px'; c.style.height = h + 'px'
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -60,19 +63,28 @@ export default function Weather() {
     }
 
     start()
-    window.addEventListener('resize', start)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', start) }
+    // ignore the small height changes caused by mobile browser bars while scrolling
+    const onResize = () => {
+      if (window.innerWidth === lastW && Math.abs(window.innerHeight - lastH) < 160) return
+      start()
+    }
+    window.addEventListener('resize', onResize)
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', onResize) }
   }, [mode])
 
   return (
-    <>
+    <WeatherContext.Provider value={{ mode, choose }}>
       <canvas ref={canvas} className="weather-canvas" aria-hidden="true" />
-      <div className="weather-ctl" role="group" aria-label="Background weather and season">
-        <span>Weather</span>
-        {MODES.map(([m, label]) => (
-          <button key={m} type="button" aria-pressed={mode === m} onClick={() => choose(m)}>{label}</button>
-        ))}
-      </div>
-    </>
+      {children}
+    </WeatherContext.Provider>
+  )
+}
+
+export function WeatherControl() {
+  const { mode, choose } = useContext(WeatherContext)
+  return (
+    <select className="weather-sel" value={mode} onChange={(e) => choose(e.target.value)} aria-label="Background weather and season">
+      {MODES.map(([m, label]) => <option key={m} value={m}>Weather: {label}</option>)}
+    </select>
   )
 }

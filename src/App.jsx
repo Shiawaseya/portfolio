@@ -1,4 +1,4 @@
-import Weather from './components/weather/Weather'
+import { WeatherProvider } from './components/weather/Weather'
 import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
 import Home from './features/home/Home'
@@ -14,8 +14,7 @@ import Contact from './features/contact/Contact'
 
 export default function App() {
   return (
-    <>
-      <Weather />
+    <WeatherProvider>
       <Header />
       <main>
         <Home />
@@ -30,6 +29,6 @@ export default function App() {
         <Contact />
       </main>
       <Footer />
-    </>
+    </WeatherProvider>
   )
 }
